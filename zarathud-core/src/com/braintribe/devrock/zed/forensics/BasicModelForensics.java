@@ -212,12 +212,21 @@ public class BasicModelForensics extends ZedForensicsCommons implements ModelFor
 		Enumeration<URL> resources;
 		try {
 			resources = context.classloader().getResources(MODEL_DECLARATION_XML);
-			String key = context.terminalArtifact().toJarRepresentation();
+			Artifact terminalArtifact = context.terminalArtifact();
+			String jarKey = terminalArtifact.toJarRepresentation();
+			String folderKey = terminalArtifact.getGroupId() + "/" + terminalArtifact.getArtifactId() + "/";			
 			while (resources.hasMoreElements()) {
 				URL url = resources.nextElement();
 				String externalRepresentation = url.toExternalForm();
-				if (externalRepresentation.contains(key)) {
-					return url;			
+				if (externalRepresentation.startsWith("jar:")) {
+					if (externalRepresentation.contains(jarKey)) {
+						return url;			
+					}					
+				}
+				else {
+					if (externalRepresentation.contains(folderKey)) {
+						return url;			
+					}					
 				}
 			}			
 		} catch (IOException e) {

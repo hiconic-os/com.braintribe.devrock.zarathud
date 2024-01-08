@@ -48,11 +48,13 @@ public class RatingRegistry implements FingerPrintCommons, HasFingerPrintTokens 
 	
 	private static ForensicsRating minimalRating = ForensicsRating.IGNORE;
 	
-	private List<Class<? extends IssueType>> issueCategories = new ArrayList<>();
-	
 	private Map<String, IssueType> parserMap = new HashMap<>();	
-	 
-	private Map<FingerPrint, ForensicsRating> ratingsMap = new LinkedHashMap<>();	
+	
+	private List<Class<? extends IssueType>> issueCategories = new ArrayList<>();
+	 	
+	private Map<FingerPrint, ForensicsRating> ratingsMap = new LinkedHashMap<>();
+	
+	private Map<String, String> tipMap = new HashMap<>();
 	
 	{
 		// currently known categories 
@@ -73,55 +75,102 @@ public class RatingRegistry implements FingerPrintCommons, HasFingerPrintTokens 
 		// dependencies
 		//
 		ratingsMap.put( FingerPrintExpert.build(DependencyForensicIssueTypes.MissingDependencyDeclarations), ForensicsRating.WARN);
+		tipMap.put( DependencyForensicIssueTypes.MissingDependencyDeclarations.name(), "An artifact is referenced by the terminal but hasn't been declared as direct dependency");
+		
 		ratingsMap.put( FingerPrintExpert.build(DependencyForensicIssueTypes.ExcessDependencyDeclarations), ForensicsRating.INFO);
+		tipMap.put( DependencyForensicIssueTypes.ExcessDependencyDeclarations.name(), "An artifact has been declared as direct dependency but is never referenced by the terminal");
+		
 		ratingsMap.put( FingerPrintExpert.build(DependencyForensicIssueTypes.ForwardDeclarations), ForensicsRating.OK);
+		tipMap.put( DependencyForensicIssueTypes.ForwardDeclarations.name(), "A type the terminal references is semantically assigned to a different dependency than the artifact that declares it");
+		
 		ratingsMap.put( FingerPrintExpert.build(DependencyForensicIssueTypes.MissingForwardDependencyDeclarations), ForensicsRating.WARN);
+		tipMap.put( DependencyForensicIssueTypes.MissingForwardDependencyDeclarations.name(), "A type the terminal references is semantically assigned to a different dependency than the artifact that declares it, but this dependency doesn't exist");
 			
 		//
 		// classpath
 		//
 		ratingsMap.put( FingerPrintExpert.build( ClasspathForensicIssueType.ShadowingClassesInClasspath), ForensicsRating.WARN);
+		tipMap.put( ClasspathForensicIssueType.ShadowingClassesInClasspath.name(), "There are several different classes with the same package- and class-name within the classpath");
 		
 		//
 		// model definition (aka java declarations)
 		//
 		ratingsMap.put( FingerPrintExpert.build( ModelForensicIssueType.MissingGetter), ForensicsRating.ERROR);
+		tipMap.put( ModelForensicIssueType.MissingGetter.name(), "The model property has no declared getter function");
+		
 		ratingsMap.put( FingerPrintExpert.build( ModelForensicIssueType.MissingSetter), ForensicsRating.ERROR);
+		tipMap.put( ModelForensicIssueType.MissingSetter.name(), "The model property has no declared setter function");
 		
 		ratingsMap.put( FingerPrintExpert.build( ModelForensicIssueType.TypeMismatch), ForensicsRating.ERROR);
+		tipMap.put( ModelForensicIssueType.TypeMismatch.name(), "Getter and setter functions have mismatching types");
+		
 		ratingsMap.put( FingerPrintExpert.build( ModelForensicIssueType.InvalidTypes), ForensicsRating.ERROR);
+		tipMap.put( ModelForensicIssueType.InvalidTypes.name(), "An invalid type is used as a property");
+		
 		ratingsMap.put( FingerPrintExpert.build( ModelForensicIssueType.CollectionInCollection), ForensicsRating.ERROR);
+		tipMap.put( ModelForensicIssueType.CollectionInCollection.name(), "A collection-type was used within a collection-type of a property");
 
 		// overall
 		ratingsMap.put( FingerPrintExpert.build( ModelForensicIssueType.NonConformMethods), ForensicsRating.ERROR);
+		tipMap.put( ModelForensicIssueType.NonConformMethods.name(), "An invalid method declaration was used, either shadowing a getter/setter pair or otherwise invalid");
+		
 		ratingsMap.put( FingerPrintExpert.build( ModelForensicIssueType.ConformMethods), ForensicsRating.INFO);
+		tipMap.put( ModelForensicIssueType.ConformMethods.name(), "While not a getter/setter function, the function itself is valid, but may not be available in some forms of the model");
+		
 		ratingsMap.put( FingerPrintExpert.build( ModelForensicIssueType.NonCanonic), ForensicsRating.INFO);
+		tipMap.put( ModelForensicIssueType.NonCanonic.name(), "The model itself is valid, but its full content isnt' isomorph, i.e. some content will be lost on model-projections");
 
 		ratingsMap.put( FingerPrintExpert.build( ModelForensicIssueType.UnexpectedField), ForensicsRating.INFO);
+		tipMap.put( ModelForensicIssueType.UnexpectedField.name(), "The model itself is valid, but contains a field that is neither required nor accounted for by the model structure");
 		
 		// property literal
 		ratingsMap.put( FingerPrintExpert.build( ModelForensicIssueType.PropertyNameLiteralMissing), ForensicsRating.INFO);
+		tipMap.put( ModelForensicIssueType.PropertyNameLiteralMissing.name(), "The property has no name field declared");
+		
 		ratingsMap.put( FingerPrintExpert.build( ModelForensicIssueType.PropertyNameLiteralTypeMismatch), ForensicsRating.ERROR);
+		tipMap.put( ModelForensicIssueType.PropertyNameLiteralTypeMismatch.name(), "The name field declared for the property is not the correct type (string)");
+		
 		ratingsMap.put( FingerPrintExpert.build( ModelForensicIssueType.PropertyNameLiteralMismatch), ForensicsRating.ERROR);
+		tipMap.put( ModelForensicIssueType.PropertyNameLiteralMismatch.name(), "The value of the name field declared for the property doesn't correspond with the name of the property");
 	
 		//
 		ratingsMap.put( FingerPrintExpert.build( ModelForensicIssueType.ContainsNoGenericEntities), ForensicsRating.INFO);
+		tipMap.put( ModelForensicIssueType.ContainsNoGenericEntities.name(), "The artifact is a model yet it contains no generic entities");
+		
 		ratingsMap.put( FingerPrintExpert.build( ModelForensicIssueType.InvalidEntityTypeDeclaration), ForensicsRating.ERROR);
+		tipMap.put( ModelForensicIssueType.InvalidEntityTypeDeclaration.name(), "The entity's T field is not valid (wrong types, wrong call, wrong parameter)");
+		
 		ratingsMap.put( FingerPrintExpert.build( ModelForensicIssueType.MissingEntityTypeDeclaration), ForensicsRating.ERROR);
+		tipMap.put( ModelForensicIssueType.MissingEntityTypeDeclaration.name(), "The entity doesn't contain a T field");
 		
 		// enums in model
 		ratingsMap.put( FingerPrintExpert.build( ModelForensicIssueType.EnumTypeNoEnumbaseDerivation), ForensicsRating.ERROR);
+		tipMap.put( ModelForensicIssueType.EnumTypeNoEnumbaseDerivation.name(), "The enum entity doesn't derive from com.braintribe.model.generic.base.EnumBase");
+		
 		ratingsMap.put( FingerPrintExpert.build( ModelForensicIssueType.EnumTypeNoTField), ForensicsRating.ERROR);
+		tipMap.put( ModelForensicIssueType.EnumTypeNoTField.name(), "The enum entity doesn't contain a T field");
+		
 		ratingsMap.put( FingerPrintExpert.build( ModelForensicIssueType.EnumTypeNoTypeFunction), ForensicsRating.ERROR);
+		tipMap.put( ModelForensicIssueType.EnumTypeNoTypeFunction.name(), "The enum entity doesn't declare the type() function");
 		
 		// model declaration (aka model-declaration.xml)
 		ratingsMap.put( FingerPrintExpert.build( ModelDeclarationForensicIssueType.MissingDeclarationFile), ForensicsRating.ERROR);
-		ratingsMap.put( FingerPrintExpert.build( ModelDeclarationForensicIssueType.MissingTypeDeclarations), ForensicsRating.INFO);
-		ratingsMap.put( FingerPrintExpert.build( ModelDeclarationForensicIssueType.ExcessTypeDeclarations), ForensicsRating.ERROR);
-		ratingsMap.put( FingerPrintExpert.build( ModelDeclarationForensicIssueType.DeclarationFileInvalid), ForensicsRating.ERROR);
-		ratingsMap.put( FingerPrintExpert.build( ModelDeclarationForensicIssueType.MissingDeclaredDependencyDeclarations), ForensicsRating.ERROR);
-		ratingsMap.put( FingerPrintExpert.build( ModelDeclarationForensicIssueType.ExcessDeclaredDependencyDeclarations), ForensicsRating.WARN);
+		tipMap.put( ModelDeclarationForensicIssueType.MissingDeclarationFile.name(), "The model doesn't contain the required embedded 'model-declaration.xml' file");
 		
+		ratingsMap.put( FingerPrintExpert.build( ModelDeclarationForensicIssueType.MissingTypeDeclarations), ForensicsRating.INFO);
+		tipMap.put( ModelDeclarationForensicIssueType.MissingTypeDeclarations.name(), "The embedded 'model-declaration.xml' file doesn't list all entities of the model");
+		
+		ratingsMap.put( FingerPrintExpert.build( ModelDeclarationForensicIssueType.ExcessTypeDeclarations), ForensicsRating.ERROR);
+		tipMap.put( ModelDeclarationForensicIssueType.ExcessTypeDeclarations.name(), "The embedded 'model-declaration.xml' file list entities that do not exist within the model");
+		
+		ratingsMap.put( FingerPrintExpert.build( ModelDeclarationForensicIssueType.DeclarationFileInvalid), ForensicsRating.ERROR);
+		tipMap.put( ModelDeclarationForensicIssueType.DeclarationFileInvalid.name(), "The embedded 'model-declaration.xml' file cannot be read");
+		
+		ratingsMap.put( FingerPrintExpert.build( ModelDeclarationForensicIssueType.MissingDeclaredDependencyDeclarations), ForensicsRating.ERROR);
+		tipMap.put( ModelDeclarationForensicIssueType.MissingDeclaredDependencyDeclarations.name(), "The embedded 'model-declaration.xml' file doesn't list all depedencies required");
+		
+		ratingsMap.put( FingerPrintExpert.build( ModelDeclarationForensicIssueType.ExcessDeclaredDependencyDeclarations), ForensicsRating.WARN);
+		tipMap.put( ModelDeclarationForensicIssueType.ExcessDeclaredDependencyDeclarations.name(), "The embedded 'model-declaration.xml' file list more than the required depedencies");
 	}
 	
 	/**
@@ -140,6 +189,29 @@ public class RatingRegistry implements FingerPrintCommons, HasFingerPrintTokens 
 	public Map<FingerPrint, ForensicsRating> getCurrentRatings() {
 		return ratingsMap;
 	}
+	
+
+	/**
+	 * returns the assigned (tool) tip of a FingerPrint's issue 
+	 * @param fp - the {@link FingerPrint}
+	 * @return - the text assigned
+	 */
+	public String getTip(FingerPrint fp) {
+		String issue = fp.getSlots().get(ISSUE);
+		return tipMap.get(issue);
+	}
+	
+	/**
+	 * returns the assigned (tool) tip of a FingerPrint's issue 
+	 * @param fp - the {@link FingerPrint}
+	 * @return - the text assigned
+	 */
+	public String getTip(String issue) {		
+		return tipMap.get(issue);
+	}
+	
+	
+	
 	
 	/**
 	 * find a matching rating : it's the last entry of the matching finger print with the most number of slots 

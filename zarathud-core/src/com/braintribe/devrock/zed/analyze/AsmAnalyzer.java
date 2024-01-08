@@ -615,7 +615,7 @@ public class AsmAnalyzer implements ZedEntityResolver{
 		
 		if (resourceUrl == null) {	
 			String path = context.currentlyScannedResource().getPath();
-			String msg = "no matching URL found for passed resource name [" + className + "] while scanning [" + path + "]";
+			String msg = "cannot determine type from [" + className + "] while scanning [" + path + "], java.lang.Object assumed";
 			log.warn(msg);
 			// in order to collect the data, it needs to be reflected..
 			String scannedResource;

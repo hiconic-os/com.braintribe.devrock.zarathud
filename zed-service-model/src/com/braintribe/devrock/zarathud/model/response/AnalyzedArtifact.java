@@ -11,13 +11,13 @@
 // ============================================================================
 package com.braintribe.devrock.zarathud.model.response;
 
-import com.braintribe.devrock.zarathud.model.request.AnalyzeArtifact;
+import com.braintribe.devrock.zarathud.model.request.BasicZedRequest;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.EntityTypes;
 import com.braintribe.model.resource.Resource;
 
 /**
- * zed's response to an {@link AnalyzeArtifact} request
+ * zed's response to an {@link BasicZedRequest} request
  * @author pit
  *
  */

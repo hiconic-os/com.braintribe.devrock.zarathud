@@ -55,7 +55,6 @@ import com.braintribe.logging.Logger;
 import com.braintribe.zarathud.model.data.ScopeModifier;
 
 /**
- * @author dirk
  *
  */
 public abstract class AsmClassDepScanner {

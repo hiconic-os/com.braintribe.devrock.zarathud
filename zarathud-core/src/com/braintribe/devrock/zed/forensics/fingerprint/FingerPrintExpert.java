@@ -380,6 +380,7 @@ public class FingerPrintExpert implements HasFingerPrintTokens{
 		fingerPrint.setComparisonIssueType(issue);
 		return fingerPrint;
 	}
+		
 	
 	
 	/**
@@ -411,6 +412,9 @@ public class FingerPrintExpert implements HasFingerPrintTokens{
 		return fingerPrint;
 	}
 	
+	public static FingerPrint build(ModelPropertyReference mpr) {		
+		return build(mpr, (String) null);
+	}
 	/**
 	 * create a finger print for field related issue 
 	 * @param fe - the {@link FieldEntity}
@@ -477,6 +481,9 @@ public class FingerPrintExpert implements HasFingerPrintTokens{
 		}		
 	}
 	
+	public static FingerPrint build(GenericEntity ge) {		
+		return build(ge, (String) null);
+	}
 	
 	/**
 	 * matches two String values, while 'null' means a wildcard 
@@ -637,7 +644,4 @@ public class FingerPrintExpert implements HasFingerPrintTokens{
 		return sb.toString();
 	}
 
-	public static FingerPrint build(GenericEntity ge) {		
-		return build(ge, (String) null);
-	}
 }

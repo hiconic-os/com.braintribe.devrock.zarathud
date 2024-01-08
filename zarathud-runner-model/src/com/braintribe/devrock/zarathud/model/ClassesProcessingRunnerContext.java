@@ -23,6 +23,9 @@ import com.braintribe.model.artifact.consumable.Part;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.EntityTypes;
 
+/**
+ * a context for Eclipse projects (i.e. directories with compiled classes)
+ */
 public interface ClassesProcessingRunnerContext extends RatingAspect, CoreAnalysisAspect, CoreProcessingAspect, ConfigurationAspect {
 	
 	EntityType<ClassesProcessingRunnerContext> T = EntityTypes.T(ClassesProcessingRunnerContext.class);

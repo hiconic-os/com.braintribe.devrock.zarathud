@@ -15,13 +15,18 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import com.braintribe.codec.marshaller.yaml.YamlMarshaller;
 import com.braintribe.common.lcd.Pair;
-import com.braintribe.devrock.zarathud.model.ResolvingRunnerContext;
+import com.braintribe.devrock.mc.api.commons.PartIdentifications;
+import com.braintribe.devrock.zarathud.model.ClassesProcessingRunnerContext;
 import com.braintribe.devrock.zarathud.model.context.ConsoleOutputVerbosity;
-import com.braintribe.devrock.zarathud.model.request.AnalyzeArtifact;
+import com.braintribe.devrock.zarathud.model.request.AnalyzeArtifactRequest;
+import com.braintribe.devrock.zarathud.model.request.BasicZedRequest;
 import com.braintribe.devrock.zarathud.model.request.ZedRequest;
 import com.braintribe.devrock.zarathud.model.response.AnalyzedArtifact;
 import com.braintribe.devrock.zarathud.runner.api.ZedWireRunner;
@@ -30,11 +35,16 @@ import com.braintribe.devrock.zarathud.runner.wire.contract.ZedRunnerContract;
 import com.braintribe.devrock.zed.forensics.fingerprint.persistence.FingerPrintMarshaller;
 import com.braintribe.devrock.zed.forensics.fingerprint.persistence.FingerprintOverrideContainer;
 import com.braintribe.gm.model.reason.Maybe;
+import com.braintribe.gm.model.reason.Reason;
 import com.braintribe.logging.Logger;
+import com.braintribe.model.artifact.analysis.AnalysisArtifact;
+import com.braintribe.model.artifact.analysis.AnalysisDependency;
+import com.braintribe.model.artifact.consumable.Part;
 import com.braintribe.model.generic.GenericEntity;
 import com.braintribe.model.processing.service.api.ServiceRequestContext;
 import com.braintribe.model.processing.service.impl.AbstractDispatchingServiceProcessor;
 import com.braintribe.model.processing.service.impl.DispatchConfiguration;
+import com.braintribe.model.resource.FileResource;
 import com.braintribe.model.resource.Resource;
 import com.braintribe.wire.api.Wire;
 import com.braintribe.wire.api.context.WireContext;
@@ -45,6 +55,8 @@ import com.braintribe.zarathud.model.forensics.FingerPrint;
 import com.braintribe.zarathud.model.forensics.ForensicsRating;
 import com.braintribe.zarathud.model.forensics.ModelForensicsResult;
 import com.braintribe.zarathud.model.forensics.ModuleForensicsResult;
+
+import jsinterop.utils.Collections;
 
 /**
  * jinni wrapper for zed
@@ -63,32 +75,94 @@ public class ZedServiceProcessor  extends AbstractDispatchingServiceProcessor<Ze
 	
 	@Override
 	protected void configureDispatching(DispatchConfiguration<ZedRequest, Object> dispatching) {
-		dispatching.register( AnalyzeArtifact.T, this::analyze);
+		dispatching.register( AnalyzeArtifactRequest.T, this::analyze);
 	}
+	
+	private String extractTerminalCodeLocation(AnalysisArtifact aa) {
+		Part part = aa.getParts().get( PartIdentifications.jar.asString());
+		Resource resource = part.getResource();
+		if (resource instanceof FileResource) {
+			FileResource fr = (FileResource) resource;
+			File f = new File(fr.getPath());
+			if (f.isDirectory()) {
+				return f.getAbsolutePath();				 
+			}
+		}		
+		return null;
+	}
+	
+	private Map<String, AnalysisArtifact> extractCodeLocation(List<AnalysisArtifact> aas) {
+		Map<String, AnalysisArtifact> result = new HashMap<>();
+		for (AnalysisArtifact a : aas) {
+			String folder = extractTerminalCodeLocation(a);
+			if (folder != null) {
+				result.put(folder, a);
+			}
+		}
+		return result;
+	}
+	
 	
 	/**
 	 * run the analysis 
 	 * @param context - the {@link ServiceRequestContext}
-	 * @param request - the {@link AnalyzeArtifact} request
+	 * @param request - the {@link BasicZedRequest} request
 	 * @return - the resulting {@link AnalyzedArtifact}
 	 */
-	private AnalyzedArtifact analyze( ServiceRequestContext context, AnalyzeArtifact request) {
+	public AnalyzedArtifact analyze( ServiceRequestContext context, AnalyzeArtifactRequest request) {
 		WireContext<ZedRunnerContract> wireContext = Wire.context( ZedRunnerWireTerminalModule.INSTANCE);
+		String terminalName = request.getTerminal().asString();
 		
-		ResolvingRunnerContext rrc = ResolvingRunnerContext.T.create();
-		rrc.setTerminal( request.getTerminal());
+		 
+		
+		ClassesProcessingRunnerContext cprC = ClassesProcessingRunnerContext.T.create();
+		cprC.setTerminal( terminalName);
+
+		AnalysisArtifact terminal = request.getTerminal();
+		List<AnalysisArtifact> solutions = request.getResolution().getSolutions();
+		
+		// check the terminal, whether it's 'jar-based' or 'directory-based'
+		String terminalClassfolder = extractTerminalCodeLocation( terminal);
+		if (terminalClassfolder != null) {
+			cprC.setTerminalClassesDirectoryNames( Collections.list( terminalClassfolder));
+			// remove it from solutions?
+			solutions.remove( request.getTerminal());
+		}
+		
+		// check all solutions whether they are 'jar-based' or 'directory-based'
+		Map<String, AnalysisArtifact> solutionClassfolders = extractCodeLocation( solutions);
+		if (!solutionClassfolders.isEmpty()) {
+			cprC.setNonpackedSolutionsOfClasspath( solutionClassfolders);
+			// remove from solutions?
+			solutionClassfolders.values().stream().forEach( aa -> solutions.remove(aa));							
+		}
+		
+		cprC.setClasspath( solutions);
+		cprC.setCompiledSolutionsOfClasspath( solutions);
+		
+		List<AnalysisDependency> terminalDependencies = terminal.getOrigin().getDependencies().stream().map( cd -> AnalysisDependency.from(cd)).collect(Collectors.toList());
+		cprC.setDependencies(terminalDependencies);
+		
 		ConsoleOutputVerbosity consoleOutputVerbosity = request.getVerbosity();
 		if (consoleOutputVerbosity == null) {
 			consoleOutputVerbosity = ConsoleOutputVerbosity.verbose;
 		}
-		rrc.setConsoleOutputVerbosity( consoleOutputVerbosity);
+		cprC.setConsoleOutputVerbosity( consoleOutputVerbosity);
 		
-		ZedWireRunner zedWireRunner = wireContext.contract().resolvingRunner( rrc);
+		ZedWireRunner zedWireRunner = wireContext.contract().classesRunner( cprC);
 		
 		Maybe<Pair<ForensicsRating,Map<FingerPrint,ForensicsRating>>> resultsMaybe = zedWireRunner.run();
 		
-		Pair<ForensicsRating,Map<FingerPrint,ForensicsRating>> results = resultsMaybe.get(); 
-		
+		Pair<ForensicsRating,Map<FingerPrint,ForensicsRating>> results;
+		if (resultsMaybe.hasValue()) {
+			Reason whyUnsatisfied = resultsMaybe.whyUnsatisfied();
+			results = resultsMaybe.value();
+			log.warn( whyUnsatisfied.stringify());
+		}
+		else {
+			results = resultsMaybe.get();
+		}
+				 		
 		AnalyzedArtifact response = AnalyzedArtifact.T.create();
 		if (results.first == null) {
 			log.warn("no data available for [" + request.getTerminal() + "]");
@@ -103,29 +177,29 @@ public class ZedServiceProcessor  extends AbstractDispatchingServiceProcessor<Ze
 		File output = new File( outputDirectory);
 		output.mkdirs();
 		
-		File fingerprintsFile = writeFingerPrints( output, request.getTerminal(), results.second);
+		File fingerprintsFile = writeFingerPrints( output, terminalName, results.second);
 		response.setFingerPrints( toResource(fingerprintsFile));
 		
 		if (request.getWriteAnalysisData()) {
 			// write extraction & forensics & add at 
 			Artifact analyzedArtifact = zedWireRunner.analyzedArtifact();
-			File exFile = writeYaml(output, request.getTerminal(), "extraction", analyzedArtifact);
+			File exFile = writeYaml(output, terminalName, "extraction", analyzedArtifact);
 			response.setDependencyForensics( toResource( exFile));
 						
 			DependencyForensicsResult dependencyForensicsResult = zedWireRunner.dependencyForensicsResult();
-			File depFile = writeYaml(output, request.getTerminal(), "dependency", dependencyForensicsResult);
+			File depFile = writeYaml(output, terminalName, "dependency", dependencyForensicsResult);
 			response.setDependencyForensics( toResource(depFile));
 			
 			ClasspathForensicsResult classpathForensicsResult = zedWireRunner.classpathForensicsResult();
-			File cpFile = writeYaml(output, request.getTerminal(), "classpath", classpathForensicsResult);
+			File cpFile = writeYaml(output, terminalName, "classpath", classpathForensicsResult);
 			response.setClasspathForensics( toResource(cpFile));
 			
 			ModelForensicsResult modelForensicsResult = zedWireRunner.modelForensicsResult();
-			File mdlFile = writeYaml(output, request.getTerminal(), "model", modelForensicsResult);
+			File mdlFile = writeYaml(output, terminalName, "model", modelForensicsResult);
 			response.setModelForensics( toResource(mdlFile));
 			
 			ModuleForensicsResult moduleForensicsResult = zedWireRunner.moduleForensicsResult();
-			File moduleFile = writeYaml(output, request.getTerminal(), "module", moduleForensicsResult);
+			File moduleFile = writeYaml(output, terminalName, "module", moduleForensicsResult);
 			response.setModelForensics( toResource(moduleFile));
 			
 		}

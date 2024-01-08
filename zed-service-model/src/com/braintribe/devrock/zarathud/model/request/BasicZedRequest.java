@@ -12,6 +12,7 @@
 package com.braintribe.devrock.zarathud.model.request;
 
 import com.braintribe.devrock.zarathud.model.context.ConsoleOutputVerbosity;
+import com.braintribe.model.generic.annotation.Abstract;
 import com.braintribe.model.generic.annotation.meta.Alias;
 import com.braintribe.model.generic.annotation.meta.Description;
 import com.braintribe.model.generic.annotation.meta.Mandatory;
@@ -23,16 +24,16 @@ import com.braintribe.model.generic.reflection.EntityTypes;
  * @author pit
  *
  */
-@Alias("zed")
-public interface AnalyzeArtifact extends ZedRequest {
+@Abstract
+public interface BasicZedRequest extends ZedRequest {
 	
-	final EntityType<AnalyzeArtifact> T = EntityTypes.T(AnalyzeArtifact.class);
+	final EntityType<BasicZedRequest> T = EntityTypes.T(BasicZedRequest.class);
 
 	@Description("the qualified name of the artifact to analyze")
 	@Alias( "t")
 	@Mandatory
-	String getTerminal();
-	void setTerminal(String terminal);
+	String getTerminalName();
+	void setTerminalName(String terminal);
 	
 	@Description("the output directory where to write the result to")
 	@Alias( "o")
