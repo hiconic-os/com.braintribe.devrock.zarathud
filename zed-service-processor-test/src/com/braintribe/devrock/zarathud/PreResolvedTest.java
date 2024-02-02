@@ -20,13 +20,8 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
 import com.braintribe.codec.marshaller.yaml.YamlMarshaller;
-import com.braintribe.devrock.zarathud.model.context.ConsoleOutputVerbosity;
-import com.braintribe.devrock.zarathud.model.request.AnalyzeArtifactRequest;
-import com.braintribe.devrock.zarathud.model.response.AnalyzedArtifact;
 import com.braintribe.model.artifact.analysis.AnalysisArtifact;
 import com.braintribe.model.artifact.analysis.AnalysisArtifactResolution;
-import com.braintribe.model.artifact.analysis.AnalysisDependency;
-import com.braintribe.model.artifact.analysis.AnalysisTerminal;
 import com.braintribe.testing.category.KnownIssue;
 
 /**
@@ -35,11 +30,8 @@ import com.braintribe.testing.category.KnownIssue;
 @Category(KnownIssue.class)
 public class PreResolvedTest extends AbstractZedServiceProcessorTest {
 	
-	private static final String resolutionFile_mc_core_jars = "com.braintribe.devrock.mc-core-2.0.81-rc.yaml";
-	private static final String resolutionFile_mc_core_folders = "com.braintribe.devrock.mc-core-2.0.81-rc.folders.yaml";
-	
-	private static final String resolutionFile_swiss_re_jars = "swissre.claims.swissre-claims-api-model-2.3.83-rc.yaml";
-	private static final String resolutionFile_swiss_re_folders = "swissre.claims.swissre-claims-api-model-2.3.83-rc.folders.yaml";
+
+	private static final String resolutionFile_mc_core_folders = "com.braintribe.devrock.mc-core-2.0.74.folders.yaml";
 	
 	private AnalysisArtifactResolution resolution;
 	private AnalysisArtifact terminal;		
@@ -48,32 +40,14 @@ public class PreResolvedTest extends AbstractZedServiceProcessorTest {
 	@Test
 	public void test()  {
 	
-		try (InputStream in = new FileInputStream( new File( input, resolutionFile_swiss_re_jars))) {
+		try (InputStream in = new FileInputStream( new File( input, resolutionFile_mc_core_folders))) {
 			resolution = (AnalysisArtifactResolution) marshaller.unmarshall(in);
 		}
 		catch (Exception e) {
 			Assert.fail("cannot read stored resolution as " + e.getMessage());
 		}
 		
-		AnalysisTerminal analysisTerminal = resolution.getTerminals().get(0);
-		
-		if (analysisTerminal instanceof AnalysisArtifact) {
-			terminal = (AnalysisArtifact) analysisTerminal;
-		}
-		else if (analysisTerminal instanceof AnalysisDependency) { 
-			AnalysisDependency ad = (AnalysisDependency) analysisTerminal;
-			terminal = ad.getSolution();
-		}
-		
-		AnalyzeArtifactRequest request = AnalyzeArtifactRequest.T.create();
-		request.setResolution(resolution);
-		request.setTerminal(terminal);
-		request.setOutputDir( output.getAbsolutePath());
-		request.setWriteAnalysisData(true);
-		request.setVerbosity(ConsoleOutputVerbosity.taciturn);
-				
-		ZedServiceProcessor processor = new ZedServiceProcessor();
-		AnalyzedArtifact process = processor.analyze(null, request);
+		test( resolution);		
 	}
 	
 }

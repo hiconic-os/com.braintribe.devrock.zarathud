@@ -53,5 +53,4 @@ public interface ExtractionNode extends Node {
 	Map<String,ContainerNode> getContainerNodes();
 	void setContainerNodes(Map<String,ContainerNode> value);
 
-
 }

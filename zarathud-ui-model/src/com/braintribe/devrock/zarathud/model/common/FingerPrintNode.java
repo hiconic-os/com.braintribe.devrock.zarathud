@@ -11,6 +11,9 @@
 // ============================================================================
 package com.braintribe.devrock.zarathud.model.common;
 
+import java.util.List;
+
+import com.braintribe.devrock.zarathud.model.extraction.ExtractionNode;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.EntityTypes;
 import com.braintribe.zarathud.model.data.ZedEntity;
@@ -40,4 +43,14 @@ public interface FingerPrintNode extends Node {
 	
 	FingerPrintRepresentation getRepresentation();
 	void setRepresentation(FingerPrintRepresentation value);
+	
+	// just for velocity output, enriched prior to rendering
+	List<ExtractionNode> getBaseExtractionNodes();
+	void setBaseExtractionNodes(List<ExtractionNode> value);
+
+	// just for velocity output, enriched prior to rendering
+	List<ExtractionNode> getOtherExtractionNodes();
+	void setOtherExtractionNodes(List<ExtractionNode> value);
+
+ 
 }

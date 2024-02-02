@@ -149,6 +149,15 @@ public class ZedServiceProcessor  extends AbstractDispatchingServiceProcessor<Ze
 		}
 		cprC.setConsoleOutputVerbosity( consoleOutputVerbosity);
 		
+		// injected ratings override 
+		if (request.getCustomRatingsResource() != null) {		
+			cprC.setCustomRatingsResource( request.getCustomRatingsResource());
+		}
+		// part of the terminal artifact, toplevel override
+		if (request.getPullRequestResource() != null) {
+			cprC.setPullRequestRatingsResource( request.getPullRequestResource());
+		}
+		
 		ZedWireRunner zedWireRunner = wireContext.contract().classesRunner( cprC);
 		
 		Maybe<Pair<ForensicsRating,Map<FingerPrint,ForensicsRating>>> resultsMaybe = zedWireRunner.run();

@@ -11,6 +11,8 @@
 // ============================================================================
 package com.braintribe.zarathud.model.forensics;
 
+import java.util.Collection;
+
 import com.braintribe.model.generic.base.EnumBase;
 import com.braintribe.model.generic.reflection.EnumType;
 import com.braintribe.model.generic.reflection.EnumTypes;
@@ -26,6 +28,16 @@ public enum ForensicsRating implements EnumBase {
 		if (currentRating.ordinal() >= newRating.ordinal())
 			return currentRating;
 		return newRating;							
+	}
+	
+	public static ForensicsRating getWorstRating( Collection<ForensicsRating> ratings) {
+		ForensicsRating initial = ForensicsRating.INFO;
+		for (ForensicsRating rating : ratings) {
+			if (ForensicsRating.isEqualOrAbove(rating, initial)) {
+				initial = rating;
+			}
+		}
+		return initial;
 	}
 	
 
