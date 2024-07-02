@@ -15,7 +15,10 @@
 // ============================================================================
 package com.braintribe.devrock.zarathud.model.response;
 
+import java.util.List;
+
 import com.braintribe.devrock.zarathud.model.request.BasicZedRequest;
+import com.braintribe.gm.model.reason.Reason;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.EntityTypes;
 import com.braintribe.model.resource.Resource;
@@ -59,4 +62,10 @@ public interface AnalyzedArtifact extends ZedResponse {
 	 */
 	Resource getModelForensics();
 	void setModelForensics(Resource modelForensics);
+	
+	/**
+	 * @return - a resource containing a {@link List} of {@link Reason} of types that aren't defined enough - java.lang.Object references
+	 */
+	Resource getUnresolvableTypeReferences();
+	void setUnresolvableTypeReferences(Resource unresolvableTypes);
 }

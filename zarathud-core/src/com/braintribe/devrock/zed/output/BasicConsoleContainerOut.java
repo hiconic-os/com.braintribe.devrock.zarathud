@@ -74,12 +74,12 @@ public class BasicConsoleContainerOut extends BasicConsoleContainerOutputCommons
 	
 
 	@Override
-	public ConsoleOutputContainer processScanErrorReasons(ConsoleOutputContext context, List<UrlNotFound> reasons) {
+	public ConsoleOutputContainer processScanErrorReasons(ConsoleOutputContext context, List<Reason> reasons) {
 		ConfigurableConsoleOutputContainer cc = context.consoleOutputContainer();
 		cc.append( padL( context, "Scan issues found:"));
 		context.pushIndent();
 		
-		for (UrlNotFound reason : reasons) {			
+		for (Reason reason : reasons) {			
 			cc.append(  ConsoleOutputs.styled( styleForForensicsRating( ForensicsRating.ERROR), padL( context, reason.getText())));
 		}
 		context.popIndent();

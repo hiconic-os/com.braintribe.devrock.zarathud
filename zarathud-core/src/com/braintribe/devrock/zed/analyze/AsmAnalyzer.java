@@ -74,6 +74,7 @@ import com.braintribe.zarathud.model.data.natures.HasMethodsNature;
 import com.braintribe.zarathud.model.data.natures.HasTemplateParameters;
 
 public class AsmAnalyzer implements ZedEntityResolver{
+	private static final String CLASS = ".class";
 	private static Logger log = Logger.getLogger(AsmAnalyzer.class);
 	private Map<ZedEntity, ZedAnalyzerProcessContext> zedToContextMap = new HashMap<>();
 	
@@ -567,7 +568,7 @@ public class AsmAnalyzer implements ZedEntityResolver{
 	
 	@Override
 	public Maybe<ZedEntity> acquireClassResource(ZedAnalyzerContext context, String className) {
-		String resourceName = className.replace('.', '/') + ".class";
+		String resourceName = className.replace('.', '/') + CLASS;
 		
 		if (context.classloader() == null) {
 			throw new ZedException( "No classloader defined to find [" + resourceName + "]");
@@ -634,11 +635,21 @@ public class AsmAnalyzer implements ZedEntityResolver{
 				scannedType = path.substring(p+1);
 			}
 			
+			/*
+			int l = scannedType.lastIndexOf( '/');
+			if (l > 0) {
+				scannedType = scannedType.substring(l+1);
+				if (scannedType.endsWith(CLASS)) {
+					scannedType = scannedType.substring(0, scannedType.length() - CLASS.length());
+				}
+			}
+			*/
+			final String scannedTypeToShow = scannedType;
 			return Maybe.empty( Reasons.build(UrlNotFound.T)
 										.text(msg)
 										.enrich(r -> r.setScanExpression( className))										
 										.enrich( r -> r.setScannedResource(  scannedResource))
-										.enrich(r -> r.setScannedType( scannedType))
+										.enrich(r -> r.setScannedType( scannedTypeToShow))
 										.enrich( r -> r.setCombinedUrl(path))
 										.toReason()
 								);

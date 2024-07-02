@@ -86,7 +86,8 @@ public class BasicZedWireRunner implements ZedWireRunner{
 	private RatingRegistry ratings;
 	private ZedAnalyzerContext analyzerContext;
 	private Reason umbrella;
-	Maybe<Pair<ForensicsRating, Map<FingerPrint, ForensicsRating>>> collectedForensics;
+	private Maybe<Pair<ForensicsRating, Map<FingerPrint, ForensicsRating>>> collectedForensics;
+	private List<Reason> uniqueNotFoundReasons;
 	
 		
 	@Override
@@ -116,7 +117,10 @@ public class BasicZedWireRunner implements ZedWireRunner{
 		return ratings;
 	}
 	
-	
+	@Override
+	public List<Reason> unresolvableTypeReferences() {	
+		return uniqueNotFoundReasons;
+	}
 	@Override
 	public ZedAnalyzerContext analyzerContext() {
 		return analyzerContext;		
@@ -149,14 +153,8 @@ public class BasicZedWireRunner implements ZedWireRunner{
 		 
 		
 		List<Reason> rawAnalysisErrorReasons = analyzerContext.registry().collectedAsmAnalysisErrorReasons();
+	
 		List<Reason> analysisErrorReasons = coalesceAnalysisErrorReasons( rawAnalysisErrorReasons);
-		if (analysisErrorReasons != null && analysisErrorReasons.size() > 0) {
-			
-
-			Reason umbrella = acquireUmbrellaReason();
-			umbrella.getReasons().addAll(analysisErrorReasons);
-		}
-		List<Reason> collectedAsmAnalysisErrorReasons = analyzerContext.registry().collectedAsmAnalysisErrorReasons();
 		
 		// can't continue
 		if (analysedArtifact == null) {			
@@ -165,12 +163,13 @@ public class BasicZedWireRunner implements ZedWireRunner{
 		
 		// check for collected error reasons:
 		
-		// filter 
-		List<UrlNotFound> uniqueNotFoundReasons = new ArrayList<>(collectedAsmAnalysisErrorReasons.size());
-		List<Reason> unclassifiedReasons = new ArrayList<>(collectedAsmAnalysisErrorReasons.size());
+		// filter 	
+		List<Reason> unclassifiedReasons = new ArrayList<>(analysisErrorReasons.size());
+		uniqueNotFoundReasons = new ArrayList<>(analysisErrorReasons.size());
+		
 		Set<String> visited = new HashSet<>();
 		
-		for (Reason reason : collectedAsmAnalysisErrorReasons) {
+		for (Reason reason : analysisErrorReasons) {
 			if (reason instanceof UrlNotFound) {
 				UrlNotFound urlNotFoundReason = (UrlNotFound) reason;
 				String path = urlNotFoundReason.getCombinedUrl();
@@ -183,6 +182,14 @@ public class BasicZedWireRunner implements ZedWireRunner{
 				unclassifiedReasons.add(reason);
 			}
 		}
+		
+		
+		if (unclassifiedReasons.size() > 0) {						
+			Reason umbrella = acquireUmbrellaReason();
+			umbrella.getReasons().addAll(unclassifiedReasons);
+		}
+		
+		
 		
 		
 		Set<ZedEntity> entries = terminalArtifact.getEntries();		
@@ -269,114 +276,9 @@ public class BasicZedWireRunner implements ZedWireRunner{
 		*/
 		
 		
-		// if output mode is silent, we just return here 
-		if (context.getConsoleOutputVerbosity() != ConsoleOutputVerbosity.silent) {
-		
-					
-			//
-			// output
-			// 
-			ConsoleConfiguration.install( new PrintStreamConsole( System.out, true));
-			
-			// console context 
-			ConsoleContainerOut cco = wireContext.contract().consoleOutContract().consoleOut();
-			
-			Artifact runtimeArtifact = analyzingContext.artifacts().runtimeArtifact(analyzingContext);
-			
-			BasicConsoleOutputContext consoleOutputContext = new BasicConsoleOutputContext();				
-			consoleOutputContext.setVerbosity( context.getConsoleOutputVerbosity());		
-			consoleOutputContext.setRuntimeArtifact(runtimeArtifact);					
-			consoleOutputContext.setFingerprintRegistry( fingerPrintRegistry);		
-			consoleOutputContext.setRatingRegistry(ratings);
-			
-			
-			if (uniqueNotFoundReasons.size() > 0 || unclassifiedReasons.size() > 0) {
-				BasicConsoleContainerOutputCommons.title( consoleOutputContext, "Issues during analysis");
-				consoleOutputContext.pushIndent();
-				
-				if (uniqueNotFoundReasons.size() > 0) {
-					cco.processScanErrorReasons(consoleOutputContext, uniqueNotFoundReasons);
-				}		
-				if (unclassifiedReasons.size() > 0) {			
-					cco.processReasons(consoleOutputContext, unclassifiedReasons);		
-				}
-				consoleOutputContext.popIndent();		
-			}		
-			
-			
-			String terminalName = terminalArtifact.toVersionedStringRepresentation();
-			BasicConsoleContainerOutputCommons.title( consoleOutputContext, "Retrieved data of [" + terminalName + "]");
-			
-			// extraction data output 
-			BasicConsoleContainerOutputCommons.title( consoleOutputContext, "Extraction data");
-			consoleOutputContext.pushIndent();		
-		
-			ConsoleOutputContainer cc = cco.processTerminal(consoleOutputContext, analysedArtifact);
-			consoleOutputContext.popIndent();
-			
-			//
-			// forensics output 
-			//
-			
-			// dependency forensics data output		
-			BasicConsoleContainerOutputCommons.title( consoleOutputContext, "Dependency Forensics");
-			consoleOutputContext.pushIndent();
-			cc = cco.processDependencyForensics(consoleOutputContext, dependencyForensicsResult);				
-			consoleOutputContext.popIndent();
-						
-			// drop all actual dependencies, if verbosity is more than verbose
-			if (context.getConsoleOutputVerbosity().ordinal() > ConsoleOutputVerbosity.verbose.ordinal()) {
-				List<Artifact> actualDependencies = analysedArtifact.getActualDependencies();
-				if (actualDependencies != null && actualDependencies.size() > 0) {					
-					actualDependencies.stream().forEach( a -> {										
-						ArtifactForensicsResult artifactForensics = dependencyForensics.extractArtifactForensics(a);
-						if (artifactForensics.getNumberOfReferences() == 0) {						
-							ClasspathForensicsResult forensicsOnPopulation = classpathForensics.extractForensicsOnPopulation(a);
-							artifactForensics.getDuplicates().addAll( forensicsOnPopulation.getDuplicates());
-						}
-						
-						ConsoleContainerOut cco2 = new BasicConsoleContainerOut();
-						cco2.processArtifactForensicsResult(consoleOutputContext, artifactForensics);
-						
-					});
-				}
-			}
-			
-			// classpath forensics output  
-			BasicConsoleContainerOutputCommons.title( consoleOutputContext, "Classpath Forensics");
-			consoleOutputContext.pushIndent();
-			cco.processClasspathForensicsResult(consoleOutputContext, classpathForensicsResult);
-			consoleOutputContext.popIndent();
-			
-			// module forensics output
-			BasicConsoleContainerOutputCommons.title( consoleOutputContext, "Module Forensics");
-			consoleOutputContext.pushIndent();
-			cco.processModuleForensicsResult(consoleOutputContext, this.moduleForensicsResult);
-			consoleOutputContext.popIndent();
-			
-			// model forensics output 
-			if (containsGenericEntities && modelForensicsResult != null) {
-				// inject default 'valid  supporter.. 
-				BasicConsoleContainerOutputCommons.title( consoleOutputContext, "Model Forensics");
-				consoleOutputContext.pushIndent();
-				cco.processModelForensicsResult(consoleOutputContext, modelForensicsResult);
-				consoleOutputContext.popIndent();
-				// model 
-				BasicConsoleContainerOutputCommons.title( consoleOutputContext, "Model Declaration Forensics");
-				consoleOutputContext.pushIndent();
-				cco.processModelDeclarationResult(consoleOutputContext, modelForensicsResult.getDeclarationResult());
-				consoleOutputContext.popIndent();
-							
-			}
-			BasicConsoleContainerOutputCommons.title( consoleOutputContext, "Overall rating");
-			consoleOutputContext.pushIndent();
-			String txt = "Rating for [" + terminalName + "] : " + worstRating.toString();
-					
-			consoleOutputContext.consoleOutputContainer().append( BasicConsoleContainerOutputCommons.padL( consoleOutputContext, txt));
-			consoleOutputContext.popIndent();
-			
-			
-			ConsoleOutputs.println(cc);			
+		// if output mode is silent, we just skip 
+		if (context.getConsoleOutputVerbosity() != ConsoleOutputVerbosity.silent) {						
+			produceOutput(wireContext, terminalArtifact, uniqueNotFoundReasons, unclassifiedReasons, analyzingContext, containsGenericEntities, fingerPrintRegistry, dependencyForensics, classpathForensics, worstRating);			
 		}
 		
 		// return value 
@@ -389,6 +291,116 @@ public class BasicZedWireRunner implements ZedWireRunner{
 			return collectedForensics; 
 		}
 		 		
+	}
+	private void produceOutput(WireContext<ZedMainContract> wireContext, Artifact terminalArtifact,
+			List<Reason> uniqueNotFoundReasons, List<Reason> unclassifiedReasons,
+			ZedAnalyzerContext analyzingContext, boolean containsGenericEntities,
+			FingerPrintRegistry fingerPrintRegistry, BasicDependencyForensics dependencyForensics,
+			BasicClasspathForensics classpathForensics, ForensicsRating worstRating) {
+		//
+		// output
+		// 
+		ConsoleConfiguration.install( new PrintStreamConsole( System.out, true));
+		
+		// console context 
+		ConsoleContainerOut cco = wireContext.contract().consoleOutContract().consoleOut();
+		
+		Artifact runtimeArtifact = analyzingContext.artifacts().runtimeArtifact(analyzingContext);
+		
+		BasicConsoleOutputContext consoleOutputContext = new BasicConsoleOutputContext();				
+		consoleOutputContext.setVerbosity( context.getConsoleOutputVerbosity());		
+		consoleOutputContext.setRuntimeArtifact(runtimeArtifact);					
+		consoleOutputContext.setFingerprintRegistry( fingerPrintRegistry);		
+		consoleOutputContext.setRatingRegistry(ratings);
+		
+		
+		if (uniqueNotFoundReasons.size() > 0 || unclassifiedReasons.size() > 0) {
+			BasicConsoleContainerOutputCommons.title( consoleOutputContext, "Issues during analysis");
+			consoleOutputContext.pushIndent();
+			
+			if (uniqueNotFoundReasons.size() > 0) {
+				cco.processScanErrorReasons(consoleOutputContext, uniqueNotFoundReasons);
+			}		
+			if (unclassifiedReasons.size() > 0) {			
+				cco.processReasons(consoleOutputContext, unclassifiedReasons);		
+			}
+			consoleOutputContext.popIndent();		
+		}		
+		
+		
+		String terminalName = terminalArtifact.toVersionedStringRepresentation();
+		BasicConsoleContainerOutputCommons.title( consoleOutputContext, "Retrieved data of [" + terminalName + "]");
+		
+		// extraction data output 
+		BasicConsoleContainerOutputCommons.title( consoleOutputContext, "Extraction data");
+		consoleOutputContext.pushIndent();		
+
+		ConsoleOutputContainer cc = cco.processTerminal(consoleOutputContext, analysedArtifact);
+		consoleOutputContext.popIndent();
+		
+		//
+		// forensics output 
+		//
+		
+		// dependency forensics data output		
+		BasicConsoleContainerOutputCommons.title( consoleOutputContext, "Dependency Forensics");
+		consoleOutputContext.pushIndent();
+		cc = cco.processDependencyForensics(consoleOutputContext, dependencyForensicsResult);				
+		consoleOutputContext.popIndent();
+					
+		// drop all actual dependencies, if verbosity is more than verbose
+		if (context.getConsoleOutputVerbosity().ordinal() > ConsoleOutputVerbosity.verbose.ordinal()) {
+			List<Artifact> actualDependencies = analysedArtifact.getActualDependencies();
+			if (actualDependencies != null && actualDependencies.size() > 0) {					
+				actualDependencies.stream().forEach( a -> {										
+					ArtifactForensicsResult artifactForensics = dependencyForensics.extractArtifactForensics(a);
+					if (artifactForensics.getNumberOfReferences() == 0) {						
+						ClasspathForensicsResult forensicsOnPopulation = classpathForensics.extractForensicsOnPopulation(a);
+						artifactForensics.getDuplicates().addAll( forensicsOnPopulation.getDuplicates());
+					}
+					
+					ConsoleContainerOut cco2 = new BasicConsoleContainerOut();
+					cco2.processArtifactForensicsResult(consoleOutputContext, artifactForensics);
+					
+				});
+			}
+		}
+		
+		// classpath forensics output  
+		BasicConsoleContainerOutputCommons.title( consoleOutputContext, "Classpath Forensics");
+		consoleOutputContext.pushIndent();
+		cco.processClasspathForensicsResult(consoleOutputContext, classpathForensicsResult);
+		consoleOutputContext.popIndent();
+		
+		// module forensics output
+		BasicConsoleContainerOutputCommons.title( consoleOutputContext, "Module Forensics");
+		consoleOutputContext.pushIndent();
+		cco.processModuleForensicsResult(consoleOutputContext, this.moduleForensicsResult);
+		consoleOutputContext.popIndent();
+		
+		// model forensics output 
+		if (containsGenericEntities && modelForensicsResult != null) {
+			// inject default 'valid  supporter.. 
+			BasicConsoleContainerOutputCommons.title( consoleOutputContext, "Model Forensics");
+			consoleOutputContext.pushIndent();
+			cco.processModelForensicsResult(consoleOutputContext, modelForensicsResult);
+			consoleOutputContext.popIndent();
+			// model 
+			BasicConsoleContainerOutputCommons.title( consoleOutputContext, "Model Declaration Forensics");
+			consoleOutputContext.pushIndent();
+			cco.processModelDeclarationResult(consoleOutputContext, modelForensicsResult.getDeclarationResult());
+			consoleOutputContext.popIndent();
+						
+		}
+		BasicConsoleContainerOutputCommons.title( consoleOutputContext, "Overall rating");
+		consoleOutputContext.pushIndent();
+		String txt = "Rating for [" + terminalName + "] : " + worstRating.toString();
+				
+		consoleOutputContext.consoleOutputContainer().append( BasicConsoleContainerOutputCommons.padL( consoleOutputContext, txt));
+		consoleOutputContext.popIndent();
+		
+		
+		ConsoleOutputs.println(cc);
 	}
 		
 	@Override

@@ -15,12 +15,14 @@
 // ============================================================================
 package com.braintribe.devrock.zarathud.runner.api;
 
+import java.util.List;
 import java.util.Map;
 
 import com.braintribe.common.lcd.Pair;
 import com.braintribe.devrock.zed.api.context.ZedAnalyzerContext;
 import com.braintribe.devrock.zed.forensics.fingerprint.register.RatingRegistry;
 import com.braintribe.gm.model.reason.Maybe;
+import com.braintribe.gm.model.reason.Reason;
 import com.braintribe.zarathud.model.data.Artifact;
 import com.braintribe.zarathud.model.forensics.ClasspathForensicsResult;
 import com.braintribe.zarathud.model.forensics.DependencyForensicsResult;
@@ -79,6 +81,11 @@ public interface ZedWireRunner{
 	 * @return - the built {@link RatingRegistry} (configured via the context)
 	 */
 	RatingRegistry ratingRegistry();
+	
+	/**
+	 * @return - a list of collected type references that cannot be resolved (template parameters that cannot be deduced) 
+	 */
+	List<Reason> unresolvableTypeReferences();
 	
 	
 	/**

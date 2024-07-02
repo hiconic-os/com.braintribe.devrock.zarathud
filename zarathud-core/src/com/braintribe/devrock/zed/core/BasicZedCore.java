@@ -186,6 +186,8 @@ public class BasicZedCore implements ZedCore {
 			}
 		}
 		
+ 
+		
 		// extract the jars from the solutions and add them to the URL list 
 		for (AnalysisArtifact solution : classpathSolutions) {
 			

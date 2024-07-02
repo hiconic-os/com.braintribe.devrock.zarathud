@@ -97,7 +97,7 @@ public interface ConsoleContainerOut {
 	 * @param reasons - {@link List} of {@link UrlNotFound} reasons
 	 * @return - a {@link ConfigurableConsoleOutputContainer}
 	 */
-	ConsoleOutputContainer processScanErrorReasons( ConsoleOutputContext context, List<UrlNotFound> reasons);
+	ConsoleOutputContainer processScanErrorReasons( ConsoleOutputContext context, List<Reason> reasons);
 	
 	/**
 	 * processes reasons (other than the scan reasons)

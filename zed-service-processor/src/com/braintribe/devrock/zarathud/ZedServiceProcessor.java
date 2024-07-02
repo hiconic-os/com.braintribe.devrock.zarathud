@@ -36,6 +36,7 @@ import com.braintribe.devrock.zarathud.model.response.AnalyzedArtifact;
 import com.braintribe.devrock.zarathud.runner.api.ZedWireRunner;
 import com.braintribe.devrock.zarathud.runner.wire.ZedRunnerWireTerminalModule;
 import com.braintribe.devrock.zarathud.runner.wire.contract.ZedRunnerContract;
+import com.braintribe.devrock.zed.commons.UnresolveTypeReasonsLocalizer;
 import com.braintribe.devrock.zed.forensics.fingerprint.persistence.FingerPrintMarshaller;
 import com.braintribe.devrock.zed.forensics.fingerprint.persistence.FingerprintOverrideContainer;
 import com.braintribe.gm.model.reason.Maybe;
@@ -182,6 +183,10 @@ public class ZedServiceProcessor  extends AbstractDispatchingServiceProcessor<Ze
 			return response;
 		}
 		
+		
+		List<Reason> unresolvableTypeReferences = zedWireRunner.unresolvableTypeReferences();
+		UnresolveTypeReasonsLocalizer.conceptualizeUnresolvableTypeReasons( unresolvableTypeReferences);
+		
 		String outputDirectory = request.getOutputDir();
 		if (outputDirectory == null) {
 			outputDirectory = ".";
@@ -214,6 +219,11 @@ public class ZedServiceProcessor  extends AbstractDispatchingServiceProcessor<Ze
 			ModuleForensicsResult moduleForensicsResult = zedWireRunner.moduleForensicsResult();
 			File moduleFile = writeYaml(output, terminalName, "module", moduleForensicsResult);
 			response.setModelForensics( toResource(moduleFile));
+			
+			if (unresolvableTypeReferences.size() > 0) {
+				File unresolved = writeYaml(output, terminalName, outputDirectory, unresolvableTypeReferences);	
+				response.setUnresolvableTypeReferences( toResource(unresolved));
+			}
 			
 		}
 		
@@ -260,7 +270,7 @@ public class ZedServiceProcessor  extends AbstractDispatchingServiceProcessor<Ze
 	 * @param payload - the payload as {@link GenericEntity}
 	 * @return - the {@link File} written 
 	 */
-	private File writeYaml( File output, String terminalName, String code, GenericEntity payload) {
+	private File writeYaml( File output, String terminalName, String code, Object payload) {
 		terminalName = terminalName.replace( ':', '.');
 		String name = terminalName + "." + code + ".yaml";
 		File target = new File( output, name);
